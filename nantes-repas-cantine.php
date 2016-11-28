@@ -29,15 +29,28 @@ class Nantes_Repas_Cantine extends WP_Widget {
      */
     public function widget( $args, $instance ) {
 
-        // On récupére la date du lundi et du vendredi de cette semaine
-        $monday = new DateTime( 'monday this week' );
+        // On récupére la date du lundi et du vendredi de la semaine
+        // next Monday 2012-04-01
+        $ask_date = isset( $_GET['catine-week'] ) ? $_GET['catine-week'] : false;
+        $monday = false;
+
+        if( $ask_date ){
+            try {
+                $monday = new DateTime( 'monday this week ' . $ask_date );
+            } catch (Exception $e) {
+
+                $monday = new DateTime( 'monday this week' );
+            }
+        }
+
+
         $monday_iso_format = $monday->format( 'Y-m-d');
 
         $json_repas = get_transient( "week_meal_{$monday_iso_format}");
 
         if( ! $json_repas ){
 
-            $friday = new DateTime( 'friday this week' );
+            $friday = new DateTime( "friday this week {$monday_iso_format}" );
             $friday_iso_format = $friday->format( 'Y-m-d');
 
 
@@ -70,7 +83,9 @@ class Nantes_Repas_Cantine extends WP_Widget {
 
             echo $args['before_widget'];
 
-            echo "{$args['before_title']}Repas de la semaine{$args['after_title']}";
+            $i18n_mondey = mysql2date( 'd F', $monday->format( 'Y-m-d' ) );
+
+            echo "{$args['before_title']}Repas de la semaine du {$i18n_mondey}{$args['after_title']}";
 
             foreach( $json_repas->data as $day ){
 
