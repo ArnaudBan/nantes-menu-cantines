@@ -15,7 +15,7 @@ class Nantes_Repas_Cantine extends WP_Widget {
      */
     public function __construct() {
         $widget_ops = array(
-            'classname' => 'nantes_repas_cantine',
+            'classname' => 'nantes-repas-cantine',
             'description' => 'Affiche les repas de la semaine pour les écoles de nantes',
         );
         parent::__construct( 'nantes_repas_cantine', 'Nantes cantines', $widget_ops );
@@ -32,15 +32,21 @@ class Nantes_Repas_Cantine extends WP_Widget {
         // On récupére la date du lundi et du vendredi de la semaine
         // next Monday 2012-04-01
         $ask_date = isset( $_GET['catine-week'] ) ? $_GET['catine-week'] : false;
-        $monday = false;
 
         if( $ask_date ){
+
             try {
+
                 $monday = new DateTime( 'monday this week ' . $ask_date );
+
             } catch (Exception $e) {
 
                 $monday = new DateTime( 'monday this week' );
             }
+
+        } else {
+
+            $monday = new DateTime( 'monday this week' );
         }
 
 
@@ -69,7 +75,10 @@ class Nantes_Repas_Cantine extends WP_Widget {
 
                 $json_repas = json_decode( wp_remote_retrieve_body( $json_repas_response ) );
 
-                set_transient( "week_meal_{$monday_iso_format}", $json_repas, WEEK_IN_SECONDS );
+                if ( $json_repas->nb_results > 0 ){
+                    set_transient( "week_meal_{$monday_iso_format}", $json_repas, WEEK_IN_SECONDS );
+                }
+
 
             } else {
 
@@ -87,19 +96,36 @@ class Nantes_Repas_Cantine extends WP_Widget {
 
             echo "{$args['before_title']}Repas de la semaine du {$i18n_mondey}{$args['after_title']}";
 
-            foreach( $json_repas->data as $day ){
+            if( $json_repas->nb_results > 0 ){
 
-                $meal_date = new DateTime( $day->date->{'$date'} );
+                foreach( $json_repas->data as $day ){
 
-                // On affiche pas les menus "allergique"
-                if( strpos( $day->titre, 'allergique' ) === false && $meal_date->format( 'N' ) != '3' ){
+                    $meal_date = new DateTime( $day->date->{'$date'} );
 
-                    $day_of_the_week = ucfirst( mysql2date( 'l', $meal_date->format( 'c')  ) );
+                    // On affiche pas les menus "allergique"
+                    if( strpos( $day->titre, 'allergique' ) === false && $meal_date->format( 'N' ) != '3' ){
 
-                    echo "<div class='repas'><h2>{$day_of_the_week}</h2><p>{$day->repas}</p><p></p></div>";
+                        $day_of_the_week = ucfirst( mysql2date( 'l', $meal_date->format( 'c')  ) );
+
+                        echo "<div class='nantes-repas-day-menu-wrapper'><h2 class='nantes-repas-day-title'>{$day_of_the_week}</h2><p class='nantes-repas-day-menu'>{$day->repas}</p><p></p></div>";
+                    }
+
                 }
-
+            } else {
+                echo '<p>';
+                _e('Les menus ne sont pas encore disponible pour cette semaine');
+                echo '</p>';
             }
+
+            $monday->sub(new DateInterval('P7D'));
+            $prev_week = add_query_arg( 'catine-week', $monday->format( 'Y-m-d' ) );
+            $monday->add(new DateInterval('P14D'));
+            $next_week = add_query_arg( 'catine-week', $monday->format( 'Y-m-d' ) );
+            ?>
+            <nav class="nantes-repas-week-nav"><a href="<?php echo $prev_week ?>">Précédent</a> <a href="<?php echo $next_week ?>">Suivant</a> </nav>
+            <?php
+
+
             echo $args['after_widget'];
         }
 
