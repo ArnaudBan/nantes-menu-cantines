@@ -54,7 +54,7 @@ class Nantes_Repas_Cantine extends WP_Widget {
 
         $json_repas = get_transient( "week_meal_{$monday_iso_format}");
 
-        if( ! $json_repas ){
+        if( ! $json_repas  ){
 
             $friday = new DateTime( "friday this week {$monday_iso_format}" );
             $friday_iso_format = $friday->format( 'Y-m-d');
@@ -98,19 +98,35 @@ class Nantes_Repas_Cantine extends WP_Widget {
 
             if( $json_repas->nb_results > 0 ){
 
+                // On affiche pas les menus "allergique"
+                $menu = array();
+                $allergy_menu = array();
+
                 foreach( $json_repas->data as $day ){
 
                     $meal_date = new DateTime( $day->date->{'$date'} );
 
-                    // On affiche pas les menus "allergique"
-                    if( strpos( $day->titre, 'allergique' ) === false && $meal_date->format( 'N' ) != '3' ){
+                    if( $meal_date->format( 'N' ) != '3') {
 
                         $day_of_the_week = ucfirst( mysql2date( 'l', $meal_date->format( 'c')  ) );
+                        $day_menu = "<div class='nantes-repas-day-menu-wrapper'><h2 class='nantes-repas-day-title'>{$day_of_the_week}</h2><p class='nantes-repas-day-menu'>{$day->repas}</p><p></p></div>";
 
-                        echo "<div class='nantes-repas-day-menu-wrapper'><h2 class='nantes-repas-day-title'>{$day_of_the_week}</h2><p class='nantes-repas-day-menu'>{$day->repas}</p><p></p></div>";
+                        if( strpos( $day->titre, 'allergique' ) === false  ){
+
+                            $menu[ $meal_date->format( 'c') ] = $day_menu;
+                        } else {
+
+                            $allergy_menu[ $meal_date->format( 'c') ] = $day_menu;
+                        }
                     }
 
                 }
+
+                ksort( $menu );
+
+                echo '<div class="menu-type-wrapper">'. implode( '', $menu ) .'</div>';
+
+
             } else {
                 echo '<p>';
                 _e('Les menus ne sont pas encore disponible pour cette semaine');
@@ -127,6 +143,7 @@ class Nantes_Repas_Cantine extends WP_Widget {
 
 
             echo $args['after_widget'];
+
         }
 
     }
